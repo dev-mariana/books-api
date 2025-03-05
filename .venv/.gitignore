@@ -1,0 +1,62 @@
+# Virtual environment
+.venv/
+env/
+venv/
+
+# Byte-compiled files
+*.pyc
+*.pyo
+*.pyd
+
+# Cache directories
+__pycache__/
+.pytest_cache/
+
+# Log files
+*.log
+
+# Coverage reports
+.coverage
+.coverage.*
+htmlcov/
+.cache
+
+# Distribution files
+dist/
+build/
+*.egg-info/
+.eggs/
+
+# Environment variables and secrets
+.env
+.env.*
+
+# IDE settings (optional, based on your editor)
+.vscode/
+.idea/
+
+# Jupyter Notebook checkpoints (if applicable)
+.ipynb_checkpoints/
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Temporary files created during development
+*.swp
+*.swo
+
+# Exclude SQLite database files (if used)
+*.sqlite3
+
+# Exclude migrations folder (if using Django or Flask)
+migrations/
+
+# Exclude VS Code workspace settings (optional)
+.vscode/settings.json
+
+# Include requirements.txt and README.md explicitly (ensure they're not ignored)
+!requirements.txt
+!README.md
+
+

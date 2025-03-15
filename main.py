@@ -1,18 +1,31 @@
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, Field
-from uuid import UUID, uuid4
+import uuid
 from typing import  List
+from sqlmodel import create_engine, SQLModel, Field
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = FastAPI()
 
-class Book(BaseModel):
-    id: UUID = Field(default_factory=uuid4)
-    title: str
-    description: str | None 
-    image_url: str
-    author: str
-    genre: str
-    publication_year: int
+class Book(SQLModel, table=True):
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    title: str = Field(index=True)
+    description: str | None = Field(index=True)
+    image_url: str | None = Field(index=True)
+    author: str = Field(index=True)
+    genre: str = Field(index=True)
+    publication_year: int = Field(index=True)
+
+database_url = os.getenv("DATABASE_URL")   
+
+engine = create_engine(database_url, echo=True)
+
+def create_db_and_tables():
+    SQLModel.metadata.create_all(engine)   
+
+create_db_and_tables()    
 
 books: List[Book] = []    
 
@@ -30,7 +43,7 @@ async def get_books():
     return books
 
 @app.get("/api/books/{book_id}")
-async def get_book(book_id: UUID):
+async def get_book(book_id: uuid.UUID):
     for book in books:
         if book.id == book_id:
             return book
@@ -38,7 +51,7 @@ async def get_book(book_id: UUID):
     raise HTTPException(status_code=404, detail="Book not found")
 
 @app.patch("/api/books/{book_id}")
-async def update_book(book_id: UUID, updated_book: Book):
+async def update_book(book_id: uuid.UUID, updated_book: Book):
     for book in books:
         if book.id == book_id:
             book.title = updated_book.title
@@ -52,7 +65,7 @@ async def update_book(book_id: UUID, updated_book: Book):
     raise HTTPException(status_code=404, detail="Book not found")
 
 @app.delete("/api/books/{book_id}")
-async def delete_book(book_id: UUID):
+async def delete_book(book_id: uuid.UUID):
     for book in books:
         if book.id == book_id:
             books.remove(book)

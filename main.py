@@ -1,74 +1,83 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
 import uuid
 from typing import  List
-from sqlmodel import create_engine, SQLModel, Field
-import os
+from sqlmodel import create_engine, SQLModel, Field, Session, select
 from dotenv import load_dotenv
+import os
+
 
 load_dotenv()
 
-app = FastAPI()
-
 class Book(SQLModel, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    title: str = Field(index=True)
-    description: str | None = Field(index=True)
-    image_url: str | None = Field(index=True)
-    author: str = Field(index=True)
-    genre: str = Field(index=True)
-    publication_year: int = Field(index=True)
+    title: str = Field()
+    description: str | None = Field()
+    image_url: str | None = Field()
+    author: str = Field()
+    genre: str = Field()
+    publication_year: int = Field()
 
-database_url = os.getenv("DATABASE_URL")   
 
-engine = create_engine(database_url, echo=True)
+app = FastAPI()   
 
-def create_db_and_tables():
-    SQLModel.metadata.create_all(engine)   
+db = os.getenv("DB_URL")
 
-create_db_and_tables()    
+engine = create_engine(db)
+SQLModel.metadata.create_all(engine)
 
-books: List[Book] = []    
+def get_session():
+       with Session(engine) as session:
+           yield session
+      
 
 @app.get("/")
 async def root():
     return {"message": "Welcome to the Books API!"}
 
-@app.post("/api/books")
-async def create_book(book: Book):
-    books.append(book)
+@app.post("/api/books", response_model=Book)
+async def create_book(book: Book, session: Session = Depends(get_session)):
+    session.add(book)
+    session.commit()
+    session.refresh(book)
+
     return book
 
-@app.get("/api/books")
-async def get_books():
+@app.get("/api/books", response_model=list[Book])
+async def get_books(session: Session = Depends(get_session)):
+    books = session.exec(select(Book)).all()
+
     return books
 
-@app.get("/api/books/{book_id}")
-async def get_book(book_id: uuid.UUID):
-    for book in books:
-        if book.id == book_id:
-            return book
+@app.get("/api/books/{book_id}", response_model=Book)
+async def get_book(book_id: uuid.UUID, session: Session = Depends(get_session)):
+    book = session.get(Book, book_id)
 
-    raise HTTPException(status_code=404, detail="Book not found")
+    if not book:
+        raise HTTPException(status_code=404, detail="Book not found")
+    return book
+    
 
-@app.patch("/api/books/{book_id}")
-async def update_book(book_id: uuid.UUID, updated_book: Book):
-    for book in books:
-        if book.id == book_id:
-            book.title = updated_book.title
-            book.description = updated_book.description
-            book.image_url = updated_book.image_url
-            book.author = updated_book.author
-            book.genre = updated_book.genre
-            book.publication_year = updated_book.publication_year
-            return book
+@app.patch("/api/books/{book_id}", response_model=Book)
+async def update_book(book_id: uuid.UUID, updated_book: Book, session: Session = Depends(get_session)):
+    book = session.get(Book, book_id)
 
-    raise HTTPException(status_code=404, detail="Book not found")
+    if not book:
+        raise HTTPException(status_code=404, detail="Book not found")
+    
+    for field, value in updated_book.model_dump().items():
+            setattr(book, field, value)
+    session.commit()
+    session.refresh(book)
+    return book
 
-@app.delete("/api/books/{book_id}")
-async def delete_book(book_id: uuid.UUID):
-    for book in books:
-        if book.id == book_id:
-            books.remove(book)
-            return {"message": "Book deleted successfully"}
+@app.delete("/api/books/{book_id}", status_code=204)
+async def delete_book(book_id: uuid.UUID, session: Session = Depends(get_session)):
+    book = session.get(Book, book_id)
 
-    raise HTTPException(status_code=404, detail="Book not found")
+    if not book:
+        raise HTTPException(status_code=404, detail="Book not found")
+    
+    session.delete(book)
+    session.commit()
+     
+    

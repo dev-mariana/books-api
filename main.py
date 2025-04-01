@@ -5,7 +5,6 @@ from sqlmodel import create_engine, SQLModel, Field, Session, select
 from dotenv import load_dotenv
 import os
 
-
 load_dotenv()
 
 class Book(SQLModel, table=True):
